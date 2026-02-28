@@ -1,0 +1,17 @@
+FROM eclipse-temurin:25-jdk-jammy AS build
+WORKDIR /app
+
+ARG MAVEN_VERSION=3.9.12
+RUN apt-get update -q && apt-get install -y -q curl && \
+    curl -fsSL https://downloads.apache.org/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+    | tar -xz -C /opt/ && \
+    ln -s /opt/apache-maven-${MAVEN_VERSION}/bin/mvn /usr/local/bin/mvn
+
+COPY pom.xml .
+COPY src ./src
+RUN mvn package -DskipTests -q
+
+FROM eclipse-temurin:25-jre-jammy
+WORKDIR /app
+COPY --from=build /app/target/workload-api-java-1.0-SNAPSHOT.jar app.jar
+ENTRYPOINT ["java", "-cp", "app.jar", "com.example.HelloWorldClient"]

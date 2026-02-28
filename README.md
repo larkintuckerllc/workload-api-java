@@ -73,13 +73,61 @@ mvn test
 
 ### Package
 
-Build a JAR file:
+Builds a self-contained fat JAR with all dependencies bundled:
 
 ```bash
 mvn package
 ```
 
 The JAR will be output to `target/workload-api-java-1.0-SNAPSHOT.jar`.
+
+## Docker
+
+Multi-arch images (AMD64 and ARM64) are built using [Docker Buildx](https://docs.docker.com/buildx/working-with-buildx/). Each image bundles the fat JAR and a Java 25 JRE.
+
+### Setup Buildx
+
+```bash
+docker buildx create --use --name multiarch
+docker buildx inspect --bootstrap
+```
+
+### Build and push the server image
+
+```bash
+REGISTRY=<registry>
+VERSION=1.0.0
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile.server \
+  -t ${REGISTRY}/hello-world-server:${VERSION} \
+  --push \
+  .
+```
+
+### Build and push the client image
+
+```bash
+REGISTRY=<registry>
+VERSION=1.0.0
+
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -f Dockerfile.client \
+  -t ${REGISTRY}/hello-world-client:${VERSION} \
+  --push \
+  .
+```
+
+### Run the server container
+
+```bash
+docker run --rm \
+  -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spiffe-workload-api.sock \
+  -p 50051:50051 \
+  ${REGISTRY}/hello-world-server:${VERSION}
+```
 
 ## gRPC API
 
@@ -127,6 +175,8 @@ Expected response:
 ```
 workload-api-java/
 ├── pom.xml
+├── Dockerfile.server
+├── Dockerfile.client
 └── src/
     ├── main/
     │   ├── java/com/example/
