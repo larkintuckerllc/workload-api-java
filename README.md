@@ -176,9 +176,9 @@ Expected response:
 
 ## Kubernetes
 
-The server can be deployed on GKE using the [workload-api-shim](https://github.com/larkintuckerllc/workload-api-shim) as a sidecar init container to supply SPIFFE credentials via the Fleet Workload Identity CSI driver.
+Both the server and client can be deployed on GKE using the [workload-api-shim](https://github.com/larkintuckerllc/workload-api-shim) as a sidecar init container to supply SPIFFE credentials via the Fleet Workload Identity CSI driver.
 
-### Pod and Service
+### Server Pod and Service
 
 ```yaml
 apiVersion: v1
@@ -242,6 +242,57 @@ Key points:
 - SPIFFE credentials are mounted from the GKE Fleet Workload Identity CSI driver (`podcertificate.gke.io`)
 - The `grpc-server` container reads the socket via `SPIFFE_ENDPOINT_SOCKET`
 - The Service exposes port `50051` for in-cluster access
+
+### Client Pod
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: debug
+  name: grpc-client
+spec:
+  serviceAccountName: default
+  restartPolicy: Never
+  initContainers:
+  - name: workload-api-shim
+    image: gcr.io/jtucker-wia-f/workload-api-shim:0.1.1
+    args:
+    - --socket-path=/run/spiffe/workload.sock
+    - --creds-dir=/var/run/secrets/workload-spiffe-credentials
+    restartPolicy: Always
+    volumeMounts:
+    - name: spiffe-socket
+      mountPath: /run/spiffe
+    - name: fleet-spiffe-credentials
+      mountPath: /var/run/secrets/workload-spiffe-credentials
+      readOnly: true
+  containers:
+  - name: grpc-client
+    image: gcr.io/jtucker-wia-f/hello-world-client:0.2.0
+    env:
+    - name: GRPC_SERVER_HOST
+      value: grpc-server
+    - name: SPIFFE_ENDPOINT_SOCKET
+      value: unix:/run/spiffe/workload.sock
+    volumeMounts:
+    - name: spiffe-socket
+      mountPath: /run/spiffe
+  volumes:
+  - name: spiffe-socket
+    emptyDir: {}
+  - name: fleet-spiffe-credentials
+    csi:
+      driver: podcertificate.gke.io
+      volumeAttributes:
+        signerName: spiffe.gke.io/fleet-svid
+        trustDomain: fleet-project/svc.id.goog
+```
+
+Key points:
+- `restartPolicy: Never` runs the client as a one-shot Pod
+- `GRPC_SERVER_HOST` is set to `grpc-server`, resolving to the server Service within the cluster
+- The same `workload-api-shim` sidecar pattern is used to supply SPIFFE credentials
 
 ## Project Structure
 
