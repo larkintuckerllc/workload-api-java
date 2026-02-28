@@ -1,12 +1,13 @@
 # workload-api-java
 
-A gRPC server and client built with Java and Maven, implementing the `Greeter` service.
+A gRPC server and client built with Java and Maven, implementing the `Greeter` service secured with mutual TLS using [SPIFFE](https://spiffe.io/) credentials.
 
 ## Prerequisites
 
 - [SDKMAN!](https://sdkman.io/) (recommended for managing Java and Maven)
 - Java 25+
 - Maven 3.9+
+- A running [SPIFFE Workload API](https://github.com/larkintuckerllc/workload-api-shim) sidecar
 
 Install Java and Maven via SDKMAN!:
 
@@ -14,6 +15,16 @@ Install Java and Maven via SDKMAN!:
 sdk install java 25.0.1-tem
 sdk install maven 3.9.12
 ```
+
+## SPIFFE Workload API
+
+Both the server and client obtain their TLS credentials (X.509 SVID and trust bundle) from the SPIFFE Workload API. The socket path is configured via the `SPIFFE_ENDPOINT_SOCKET` environment variable:
+
+```bash
+export SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spiffe-workload-api.sock
+```
+
+The server requires mutual TLS — clients must also present a valid SPIFFE X.509 SVID.
 
 ## Getting Started
 
@@ -38,7 +49,7 @@ mvn compile
 mvn exec:java -Dexec.mainClass=com.example.HelloWorldServer
 ```
 
-The server will start on port `50051`.
+The server will start on port `50051` with mTLS enabled.
 
 ### Run the Client
 
@@ -92,10 +103,15 @@ Java sources for the service are generated automatically from the proto file dur
 
 ### Example: calling SayHello with grpcurl
 
-With the server running, you can invoke the `SayHello` RPC using [grpcurl](https://github.com/fullstorydev/grpcurl):
+With the server running, you can invoke the `SayHello` RPC using [grpcurl](https://github.com/fullstorydev/grpcurl). Since the server requires mTLS, you must supply a client certificate and key from the SPIFFE Workload API:
 
 ```bash
-grpcurl -plaintext -d '{"name": "World"}' localhost:50051 com.example.Greeter/SayHello
+grpcurl \
+  -cert certificates.pem \
+  -key private_key.pem \
+  -cacert ca_certificates.pem \
+  -d '{"name": "World"}' \
+  localhost:50051 com.example.Greeter/SayHello
 ```
 
 Expected response:
