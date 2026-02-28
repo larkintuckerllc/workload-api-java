@@ -172,6 +172,75 @@ Expected response:
 }
 ```
 
+## Kubernetes
+
+The server can be deployed on GKE using the [workload-api-shim](https://github.com/larkintuckerllc/workload-api-shim) as a sidecar init container to supply SPIFFE credentials via the Fleet Workload Identity CSI driver.
+
+### Pod and Service
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  namespace: debug
+  name: grpc-server
+  labels:
+    app: grpc-server
+spec:
+  serviceAccountName: default
+  initContainers:
+  - name: workload-api-shim
+    image: gcr.io/jtucker-wia-f/workload-api-shim:0.1.1
+    args:
+    - --socket-path=/run/spiffe/workload.sock
+    - --creds-dir=/var/run/secrets/workload-spiffe-credentials
+    restartPolicy: Always
+    volumeMounts:
+    - name: spiffe-socket
+      mountPath: /run/spiffe
+    - name: fleet-spiffe-credentials
+      mountPath: /var/run/secrets/workload-spiffe-credentials
+      readOnly: true
+  containers:
+  - name: grpc-server
+    image: gcr.io/jtucker-wia-f/hello-world-server:0.1.0
+    env:
+    - name: SPIFFE_ENDPOINT_SOCKET
+      value: unix:/run/spiffe/workload.sock
+    ports:
+    - containerPort: 50051
+    volumeMounts:
+    - name: spiffe-socket
+      mountPath: /run/spiffe
+  volumes:
+  - name: spiffe-socket
+    emptyDir: {}
+  - name: fleet-spiffe-credentials
+    csi:
+      driver: podcertificate.gke.io
+      volumeAttributes:
+        signerName: spiffe.gke.io/fleet-svid
+        trustDomain: fleet-project/svc.id.goog
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: debug
+  name: grpc-server
+spec:
+  selector:
+    app: grpc-server
+  ports:
+  - port: 50051
+    targetPort: 50051
+```
+
+Key points:
+- The `workload-api-shim` init container runs as a sidecar (`restartPolicy: Always`) and serves the SPIFFE Workload API on a shared Unix socket
+- SPIFFE credentials are mounted from the GKE Fleet Workload Identity CSI driver (`podcertificate.gke.io`)
+- The `grpc-server` container reads the socket via `SPIFFE_ENDPOINT_SOCKET`
+- The Service exposes port `50051` for in-cluster access
+
 ## Project Structure
 
 ```
