@@ -24,7 +24,13 @@ Both the server and client obtain their TLS credentials (X.509 SVID and trust bu
 export SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spiffe-workload-api.sock
 ```
 
-The server requires mutual TLS — clients must also present a valid SPIFFE X.509 SVID.
+The server requires mutual TLS — clients must also present a valid SPIFFE X.509 SVID. The server additionally enforces that the client's SPIFFE ID matches the value set in the `ACCEPTED_SPIFFE_ID` environment variable:
+
+```bash
+export ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default
+```
+
+The server will fail to start if `ACCEPTED_SPIFFE_ID` is not set.
 
 ## Getting Started
 
@@ -46,7 +52,7 @@ mvn compile
 ### Run the Server
 
 ```bash
-mvn exec:java -Dexec.mainClass=com.example.HelloWorldServer
+ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default mvn exec:java -Dexec.mainClass=com.example.HelloWorldServer
 ```
 
 The server will start on port `50051` with mTLS enabled.
@@ -207,6 +213,8 @@ spec:
   - name: grpc-server
     image: gcr.io/jtucker-wia-f/hello-world-server:0.1.0
     env:
+    - name: ACCEPTED_SPIFFE_ID
+      value: spiffe://jtucker-wia-f.svc.id.goog/ns/debug/sa/default
     - name: SPIFFE_ENDPOINT_SOCKET
       value: unix:/run/spiffe/workload.sock
     ports:
