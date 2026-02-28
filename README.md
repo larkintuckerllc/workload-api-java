@@ -56,8 +56,10 @@ The server will start on port `50051` with mTLS enabled.
 With the server running in another terminal:
 
 ```bash
-mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
+GRPC_SERVER_HOST=localhost mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
 ```
+
+The `GRPC_SERVER_HOST` environment variable sets the server host (defaults to `localhost`).
 
 Expected output:
 
