@@ -1,6 +1,6 @@
 # workload-api-java
 
-A gRPC server built with Java and Maven, implementing the `Greeter` service.
+A gRPC server and client built with Java and Maven, implementing the `Greeter` service.
 
 ## Prerequisites
 
@@ -32,13 +32,27 @@ Compiles the application and generates Java sources from the proto file:
 mvn compile
 ```
 
-### Run
+### Run the Server
 
 ```bash
-mvn exec:java
+mvn exec:java -Dexec.mainClass=com.example.HelloWorldServer
 ```
 
 The server will start on port `50051`.
+
+### Run the Client
+
+With the server running in another terminal:
+
+```bash
+mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
+```
+
+Expected output:
+
+```
+Response: Hello World
+```
 
 ### Test
 
@@ -100,9 +114,10 @@ workload-api-java/
 └── src/
     ├── main/
     │   ├── java/com/example/
-    │   │   └── App.java
+    │   │   ├── HelloWorldClient.java
+    │   │   └── HelloWorldServer.java
     │   └── proto/
     │       └── greeter.proto
     └── test/java/com/example/
-        └── AppTest.java
+        └── HelloWorldServerTest.java
 ```

@@ -7,7 +7,7 @@ import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
 
-public class App {
+public class HelloWorldServer {
 
     public static void main(String[] args) throws IOException, InterruptedException {
         Server server = ServerBuilder.forPort(50051)
