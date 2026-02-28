@@ -253,7 +253,6 @@ metadata:
   name: grpc-client
 spec:
   serviceAccountName: default
-  restartPolicy: Never
   initContainers:
   - name: workload-api-shim
     image: gcr.io/jtucker-wia-f/workload-api-shim:0.1.1
@@ -290,7 +289,6 @@ spec:
 ```
 
 Key points:
-- `restartPolicy: Never` runs the client as a one-shot Pod
 - `GRPC_SERVER_HOST` is set to `grpc-server`, resolving to the server Service within the cluster
 - The same `workload-api-shim` sidecar pattern is used to supply SPIFFE credentials
 
