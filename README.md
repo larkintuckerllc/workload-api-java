@@ -155,12 +155,14 @@ With the server running, you can invoke the `SayHello` RPC using [grpcurl](https
 
 ```bash
 grpcurl \
-  -cert certificates.pem \
-  -key private_key.pem \
-  -cacert ca_certificates.pem \
+  -insecure \
+  -cert /var/run/secrets/workload-spiffe-credentials/certificates.pem \
+  -key /var/run/secrets/workload-spiffe-credentials/private_key.pem \
   -d '{"name": "World"}' \
   localhost:50051 com.example.Greeter/SayHello
 ```
+
+> **Note:** `-insecure` is required because the server's certificate uses a SPIFFE URI SAN (`spiffe://...`) rather than a DNS SAN, which causes standard hostname verification to fail. The client certificate and key are still presented for mutual TLS.
 
 Expected response:
 
