@@ -7,7 +7,6 @@ A gRPC server and client built with Java and Maven, implementing the `Greeter` s
 - [SDKMAN!](https://sdkman.io/) (recommended for managing Java and Maven)
 - Java 25+
 - Maven 3.9+
-- A running [SPIFFE Workload API](https://github.com/larkintuckerllc/workload-api-shim) sidecar
 
 Install Java and Maven via SDKMAN!:
 
@@ -18,19 +17,9 @@ sdk install maven 3.9.12
 
 ## SPIFFE Workload API
 
-Both the server and client obtain their TLS credentials (X.509 SVID and trust bundle) from the SPIFFE Workload API. The socket path is configured via the `SPIFFE_ENDPOINT_SOCKET` environment variable:
+Both the server and client obtain their TLS credentials (X.509 SVID and trust bundle) from the SPIFFE Workload API, configured via the `SPIFFE_ENDPOINT_SOCKET` environment variable.
 
-```bash
-export SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spiffe-workload-api.sock
-```
-
-The server requires mutual TLS — clients must also present a valid SPIFFE X.509 SVID. The server additionally enforces that the client's SPIFFE ID matches the value set in the `ACCEPTED_SPIFFE_ID` environment variable:
-
-```bash
-export ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default
-```
-
-The server will fail to start if `ACCEPTED_SPIFFE_ID` is not set.
+The server and client enforce mutual TLS and require the peer's SPIFFE ID to match the value set in the `ACCEPTED_SPIFFE_ID` environment variable. Both will fail to start if `ACCEPTED_SPIFFE_ID` is not set.
 
 ## Getting Started
 
@@ -47,30 +36,6 @@ Compiles the application and generates Java sources from the proto file:
 
 ```bash
 mvn compile
-```
-
-### Run the Server
-
-```bash
-ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default mvn exec:java -Dexec.mainClass=com.example.HelloWorldServer
-```
-
-The server will start on port `50051` with mTLS enabled.
-
-### Run the Client
-
-With the server running in another terminal:
-
-```bash
-GRPC_SERVER_HOST=localhost ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
-```
-
-The `GRPC_SERVER_HOST` environment variable sets the server host (defaults to `localhost`). The client will fail to start if `ACCEPTED_SPIFFE_ID` is not set.
-
-Expected output:
-
-```
-Response: Hello World
 ```
 
 ### Test
@@ -126,15 +91,6 @@ docker buildx build \
   -t ${REGISTRY}/hello-world-client:${VERSION} \
   --push \
   .
-```
-
-### Run the server container
-
-```bash
-docker run --rm \
-  -e SPIFFE_ENDPOINT_SOCKET=unix:/tmp/spiffe-workload-api.sock \
-  -p 50051:50051 \
-  ${REGISTRY}/hello-world-server:${VERSION}
 ```
 
 ## gRPC API
@@ -249,6 +205,7 @@ Key points:
 - The `workload-api-shim` init container runs as a sidecar (`restartPolicy: Always`) and serves the SPIFFE Workload API on a shared Unix socket
 - SPIFFE credentials are mounted from the GKE Fleet Workload Identity CSI driver (`podcertificate.gke.io`)
 - The `grpc-server` container reads the socket via `SPIFFE_ENDPOINT_SOCKET`
+- `ACCEPTED_SPIFFE_ID` restricts connections to clients presenting the specified SPIFFE ID
 - The Service exposes port `50051` for in-cluster access
 
 ### Client Pod
@@ -303,6 +260,7 @@ Key points:
 - `restartPolicy: Never` is set at the Pod spec level so the client does not restart after it exits
 - `restartPolicy: Always` on the `workload-api-shim` init container is the Kubernetes sidecar pattern and is independent of the Pod-level policy
 - `GRPC_SERVER_HOST` is set to `grpc-server`, resolving to the server Service within the cluster
+- `ACCEPTED_SPIFFE_ID` restricts connections to servers presenting the specified SPIFFE ID
 
 ## Project Structure
 
