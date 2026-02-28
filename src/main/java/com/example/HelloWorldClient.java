@@ -13,29 +13,29 @@ import io.spiffe.workloadapi.X509Source;
 public class HelloWorldClient {
 
     public static void main(String[] args) throws Exception {
-        X509Source x509Source = DefaultX509Source.newSource();
+        try (X509Source x509Source = DefaultX509Source.newSource()) {
+            var sslContext = GrpcSslContexts
+                    .configure(SslContextBuilder
+                            .forClient()
+                            .keyManager(new SpiffeKeyManager(x509Source))
+                            .trustManager(new SpiffeTrustManager(x509Source, (SpiffeIdVerifier) (id, chain) -> {})))
+                    .build();
 
-        var sslContext = GrpcSslContexts
-                .configure(SslContextBuilder
-                        .forClient()
-                        .keyManager(new SpiffeKeyManager(x509Source))
-                        .trustManager(new SpiffeTrustManager(x509Source, (SpiffeIdVerifier) (id, chain) -> {})))
-                .build();
+            String host = System.getenv().getOrDefault("GRPC_SERVER_HOST", "localhost");
 
-        String host = System.getenv().getOrDefault("GRPC_SERVER_HOST", "localhost");
+            ManagedChannel channel = NettyChannelBuilder.forAddress(host, 50051)
+                    .sslContext(sslContext)
+                    .build();
 
-        ManagedChannel channel = NettyChannelBuilder.forAddress(host, 50051)
-                .sslContext(sslContext)
-                .build();
-
-        try {
-            GreeterGrpc.GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
-            HelloReply response = stub.sayHello(
-                    HelloRequest.newBuilder().setName("World").build()
-            );
-            System.out.println("Response: " + response.getMessage());
-        } finally {
-            channel.shutdown();
+            try {
+                GreeterGrpc.GreeterBlockingStub stub = GreeterGrpc.newBlockingStub(channel);
+                HelloReply response = stub.sayHello(
+                        HelloRequest.newBuilder().setName("World").build()
+                );
+                System.out.println("Response: " + response.getMessage());
+            } finally {
+                channel.shutdown();
+            }
         }
     }
 }
