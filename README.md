@@ -62,10 +62,10 @@ The server will start on port `50051` with mTLS enabled.
 With the server running in another terminal:
 
 ```bash
-GRPC_SERVER_HOST=localhost mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
+GRPC_SERVER_HOST=localhost ACCEPTED_SPIFFE_ID=spiffe://example.org/ns/default/sa/default mvn exec:java -Dexec.mainClass=com.example.HelloWorldClient
 ```
 
-The `GRPC_SERVER_HOST` environment variable sets the server host (defaults to `localhost`).
+The `GRPC_SERVER_HOST` environment variable sets the server host (defaults to `localhost`). The client will fail to start if `ACCEPTED_SPIFFE_ID` is not set.
 
 Expected output:
 
@@ -279,6 +279,8 @@ spec:
   - name: grpc-client
     image: gcr.io/jtucker-wia-f/hello-world-client:0.3.0
     env:
+    - name: ACCEPTED_SPIFFE_ID
+      value: spiffe://jtucker-wia-f.svc.id.goog/ns/debug/sa/default
     - name: GRPC_SERVER_HOST
       value: grpc-server
     - name: SPIFFE_ENDPOINT_SOCKET
