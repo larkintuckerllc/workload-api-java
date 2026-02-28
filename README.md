@@ -253,9 +253,10 @@ metadata:
   name: grpc-client
 spec:
   serviceAccountName: default
+  restartPolicy: Never
   initContainers:
   - name: workload-api-shim
-    image: gcr.io/jtucker-wia-f/workload-api-shim:0.1.1
+    image: gcr.io/jtucker-wia-f/workload-api-shim:0.2.0
     args:
     - --socket-path=/run/spiffe/workload.sock
     - --creds-dir=/var/run/secrets/workload-spiffe-credentials
@@ -268,7 +269,7 @@ spec:
       readOnly: true
   containers:
   - name: grpc-client
-    image: gcr.io/jtucker-wia-f/hello-world-client:0.2.0
+    image: gcr.io/jtucker-wia-f/hello-world-client:0.3.0
     env:
     - name: GRPC_SERVER_HOST
       value: grpc-server
@@ -289,8 +290,9 @@ spec:
 ```
 
 Key points:
+- `restartPolicy: Never` is set at the Pod spec level so the client does not restart after it exits
+- `restartPolicy: Always` on the `workload-api-shim` init container is the Kubernetes sidecar pattern and is independent of the Pod-level policy
 - `GRPC_SERVER_HOST` is set to `grpc-server`, resolving to the server Service within the cluster
-- The same `workload-api-shim` sidecar pattern is used to supply SPIFFE credentials
 
 ## Project Structure
 
